@@ -83,14 +83,17 @@ def process_document_indexing(doc_id, filename, filepath, department='General'):
         print(f"Indexing background thread started for file: {filename} (Department: {department})")
 
         if _cache_enabled:
-            content_hash = _compute_file_hash(filepath)
-            if _fingerprint_cache.is_duplicate(doc_id, content_hash):
-                print(f"Document '{filename}' content unchanged, skipping re-indexing")
-                doc = Document.objects.get(id=doc_id)
-                doc.status = "indexed"
-                doc.save()
-                return
-            _fingerprint_cache.set_fingerprint(doc_id, content_hash)
+            try:
+                content_hash = _compute_file_hash(filepath)
+                if _fingerprint_cache.is_duplicate(doc_id, content_hash):
+                    print(f"Document '{filename}' content unchanged, skipping re-indexing")
+                    doc = Document.objects.get(id=doc_id)
+                    doc.status = "indexed"
+                    doc.save()
+                    return
+                _fingerprint_cache.set_fingerprint(doc_id, content_hash)
+            except Exception as cache_error:
+                print(f"Fingerprint cache unavailable for '{filename}'; continuing without it: {cache_error}")
 
         # 1. Run AI classification and risk screening IN PARALLEL with indexing.
         #    Classification is network-bound (LLM call), indexing is compute-bound
