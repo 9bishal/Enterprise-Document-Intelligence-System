@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from django.http import StreamingHttpResponse
 
 # Custom imports
+from django_backend.activity import notify_activity
 from django_backend.models import Document, ChatSession, ChatMessage, LLMConfig
 from django_backend.permissions import IsViewerOrAbove
 from django_backend.serializers import ChatSessionSerializer, ChatMessageSerializer
@@ -91,6 +92,7 @@ def chat_sessions_api(request):
             user=request.user,
             name=name
         )
+        notify_activity("chat.session_created", request.user.username, f"Session: `{name}`")
         serializer = ChatSessionSerializer(session)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     else:
@@ -106,6 +108,7 @@ def delete_chat_session(request, session_id):
         return Response({"detail": "Session not found or unauthorized."}, status=status.HTTP_404_NOT_FOUND)
 
     session.delete()
+    notify_activity("chat.session_deleted", request.user.username, "Session deleted")
     return Response({"status": "success", "message": "Session deleted successfully."})
 
 @api_view(['GET'])
@@ -234,6 +237,8 @@ def query_rag(request):
         latency_ms=result.get("latency_ms", 0),
         cache_hit=result.get("cache_hit", False),
     )
+
+    notify_activity("chat.query", request.user.username, f"Dept: `{target_dept or 'All'}` · Cache: `{bool(result.get('cache_hit'))}` · Model: `{result.get('model_used','')}`")
 
     return Response({
         "id": assistant_msg_id,

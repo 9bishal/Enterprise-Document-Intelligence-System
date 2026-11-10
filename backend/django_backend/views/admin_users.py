@@ -12,6 +12,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
 # Custom imports
+from django_backend.activity import notify_activity
 from django_backend.emails import send_invitation_email
 from django_backend.models import UserProfile, UserInvitation
 from django_backend.permissions import IsAdminUser
@@ -65,6 +66,7 @@ def admin_invite(request):
 
     try:
         send_invitation_email(email, otp, role, department)
+        notify_activity("admin.invite", request.user.username, f"Invited: `{email}` · Role: `{role}` · Dept: `{department}`")
         return Response({
             "detail": f"Invitation sent successfully to {email}.",
             "role": role,
@@ -72,6 +74,7 @@ def admin_invite(request):
         })
     except Exception as e:
         logging.getLogger(__name__).error("Email delivery failed for invitation %s: %s", email, e)
+        notify_activity("admin.invite_failed", request.user.username, f"Invited: `{email}` · Email delivery failed")
         return Response({
             "detail": f"Invitation created but email delivery failed. Contact the new employee manually with their OTP.",
             "role": role,
@@ -134,6 +137,7 @@ def admin_update_user(request, user_id):
         profile.department = new_department
 
     profile.save()
+    notify_activity("admin.user_updated", request.user.username, f"Target: `{target_user.username}` · Role: `{profile.role}` · Dept: `{profile.department}`")
 
     return Response({
         "detail": f"User '{target_user.username}' updated successfully.",
@@ -184,6 +188,7 @@ def _delete_user(request, target_user):
         print(f"[admin] semantic cache flush failed: {e}")
 
     target_user.delete()
+    notify_activity("admin.user_deleted", request.user.username, f"Target: `{username}` · Documents removed: {removed_docs}")
     return Response({
         "detail": f"User '{username}' and {removed_docs} document(s) deleted successfully.",
         "id": deleted_id,

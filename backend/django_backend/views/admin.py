@@ -13,6 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 # Custom imports
+from django_backend.activity import notify_activity
 from django_backend.models import Document, ChatSession, ChatMessage, UserProfile, UserInvitation, LLMConfig
 from django_backend.permissions import IsAdminUser
 
@@ -415,11 +416,13 @@ def admin_delete_document(request, doc_id):
                 print(f"Warning: Could not delete file from disk: {str(e)}")
         
         # Delete from database
+        filename = doc.filename
         doc.delete()
+        notify_activity("document.deleted", request.user.username, f"File: `{filename}` · Admin delete")
         
         return Response({
             "status": "success",
-            "message": f"Document '{doc.filename}' deleted successfully."
+            "message": f"Document '{filename}' deleted successfully."
         })
     
     except Exception as e:

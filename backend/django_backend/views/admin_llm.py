@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 # Custom imports
+from django_backend.activity import notify_activity
 from django_backend.models import LLMConfig
 from django_backend.permissions import IsAdminUser
 
@@ -67,5 +68,5 @@ def update_admin_llm_config(request):
         config.set_openai_key(keys["openai"])
         
     config.save()
-    
+    notify_activity("admin.llm_config_updated", request.user.username, f"Provider: `{config.provider}` · Model: `{config.model}`")
     return Response({"message": "System LLM configuration updated."})

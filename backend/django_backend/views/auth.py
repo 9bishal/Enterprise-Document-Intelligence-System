@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 # Custom imports
+from django_backend.activity import notify_activity
 from django_backend.emails import send_password_reset_email
 from django_backend.models import UserProfile, UserInvitation, PasswordResetOTP
 from django_backend.throttles import AuthRateThrottle
@@ -62,6 +63,7 @@ def auth_signup(request):
             )
         user = User.objects.create_user(username=username, password=password, email=email)
         profile = UserProfile.objects.create(user=user, role='Admin', department='General')
+        notify_activity("user.registered", username, "Role: `Admin` · Dept: `General`")
         refresh = RefreshToken.for_user(user)
         return Response({
             "username": user.username,
@@ -122,6 +124,7 @@ def auth_login(request):
     user = authenticate(username=username, password=password)
     if user is not None:
         profile, created = UserProfile.objects.get_or_create(user=user, defaults={'role': 'Viewer', 'department': 'General'})
+        notify_activity("user.login", user.username, f"Role: `{profile.role}` · Dept: `{profile.department}`")
         refresh = RefreshToken.for_user(user)
         return Response({
             "username": user.username,
@@ -178,6 +181,7 @@ def auth_forgot_password(request):
 
     PasswordResetOTP.objects.filter(email=email).delete()
     PasswordResetOTP.objects.create(email=email, otp=otp)
+    notify_activity("password.reset_requested", user.username, "OTP email requested")
     
     try:
         send_password_reset_email(email, otp)
@@ -217,6 +221,8 @@ def auth_reset_password(request):
         user.set_password(new_password)
         user.save()
         reset_entry.delete()
+        reset_user = User.objects.filter(email=email).first()
+        notify_activity("password.reset_completed", reset_user.username if reset_user else "", "Password changed")
         return Response({"message": "Password reset successfully."})
     except User.DoesNotExist:
         return Response({"detail": "Invalid or expired OTP."}, status=400)

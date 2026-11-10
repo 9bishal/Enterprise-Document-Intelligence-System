@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 # Custom imports
+from django_backend.activity import notify_activity
 from django_backend.models import Document, DEPT_CHOICES
 from django_backend.permissions import IsViewerOrAbove, IsEditorOrAbove
 from django_backend.serializers import DocumentSerializer
@@ -279,6 +280,7 @@ def upload_document(request):
 
     _supersede_previous(filename, user_department, doc_id)
     _schedule_indexing(doc_id, filename, filepath, user_department)
+    notify_activity("document.uploaded", request.user.username, f"File: `{filename}` · Dept: `{user_department}`")
 
     return Response({
         "id": doc_id,
@@ -342,6 +344,8 @@ def upload_documents_batch(request):
         except Exception as e:
             errors.append({"filename": filename, "error": str(e)})
 
+    if results:
+        notify_activity("document.batch_uploaded", request.user.username, f"Files: {len(results)} · Dept: `{user_department}`")
     return Response({
         "dispatched": len(results),
         "errors": len(errors),
@@ -410,8 +414,10 @@ def delete_document(request, doc_id):
         print(f"Error removing vector embeddings: {str(e)}")
 
     # Delete SQLite metadata record
+    filename = doc.filename
     doc.delete()
-    return Response({"status": "success", "message": f"Document '{doc.filename}' deleted successfully."})
+    notify_activity("document.deleted", request.user.username, f"File: `{filename}` · Dept: `{doc_department}`")
+    return Response({"status": "success", "message": f"Document '{filename}' deleted successfully."})
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
