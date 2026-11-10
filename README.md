@@ -1,10 +1,24 @@
-# Document Intelligent System
+# IntraDoc AI — Document Intelligence Platform
 
-A full-stack document intelligence platform that leverages **RAG (Retrieval-Augmented Generation)** to provide smart, context-aware document analysis and querying. Built with Django REST Framework backend, React/Vite frontend, and advanced NLP capabilities.
+IntraDoc AI is a full-stack document intelligence platform built around **RAG (Retrieval-Augmented Generation)**. It lets teams upload internal documents, search them semantically, and ask natural-language questions with grounded citations.
+
+**Stack:** Django REST Framework · React + Vite · PostgreSQL (Neon) · Redis Stack · Chroma · Groq / Gemini / OpenAI
+
+## Live Deployment
+
+| Service | Link |
+|---|---|
+| Frontend | https://intradoc-frontend.vercel.app |
+| Backend API | https://intradoc-backend.onrender.com/api |
+| Health check | https://intradoc-backend.onrender.com/api/health/live |
+| Repository | https://github.com/9bishal/Enterprise-Document-Intelligence-System- |
+
+> The backend runs on Render's free tier and may take 30–60 seconds to wake after inactivity.
+
 
 ## Overview
 
-The Document Intelligent System is designed to help organizations:
+IntraDoc AI is designed to help organizations:
 - Upload and index documents with semantic understanding
 - Query documents using natural language
 - Get AI-powered answers with source attribution
@@ -109,20 +123,23 @@ document_intelligent_system/
 ## Tech Stack
 
 ### Backend
-- **Framework**: Django 4.x + Django REST Framework
-- **Database**: SQLite (with migration support)
-- **Vector DB**: Chroma (for semantic search)
+- **Framework**: Django 6 + Django REST Framework
+- **Database**: PostgreSQL (Neon) in production; SQLite for local development
+- **Vector DB**: Chroma (department-scoped collections)
+- **Cache / Semantic cache**: Redis Stack (RediSearch)
 - **LLM**: Groq / Gemini / OpenAI (admin-configured, bill-accurate usage)
 - **Authentication**: JWT tokens
-- **Language**: Python 3.10+
+- **Language**: Python 3.12
+- **Hosting**: Render
 
 ### Frontend
-- **Framework**: React 18.x
+- **Framework**: React
 - **Build Tool**: Vite
-- **Styling**: CSS-in-JS (styled with JSX)
+- **Styling**: CSS
 - **State Management**: React Hooks
 - **HTTP Client**: Fetch API
 - **Language**: JavaScript (ES6+)
+- **Hosting**: Vercel
 
 ## Prerequisites
 
@@ -314,16 +331,13 @@ npm test
 
 ## Deployment
 
-### Backend Deployment (Gunicorn + Nginx)
-```bash
-gunicorn django_backend.wsgi:application --bind 0.0.0.0:8000
-```
+Production is deployed on **Render** (backend) and **Vercel** (frontend):
 
-### Frontend Deployment (Build for production)
-```bash
-npm run build
-# Output in dist/ directory
-```
+- Frontend: https://intradoc-frontend.vercel.app
+- Backend API: https://intradoc-backend.onrender.com/api
+- Step-by-step guide: [DEPLOY_RENDER_VERCEL.md](./DEPLOY_RENDER_VERCEL.md)
+
+The backend uses Neon Postgres for durable user/document metadata and Redis Stack for caching. Render's free tier does not provide persistent disk, so uploaded files and Chroma vectors are ephemeral unless a persistent disk or external object/vector storage is added.
 
 ## Troubleshooting
 
@@ -341,7 +355,9 @@ npm run build
 
 - [Backend README](./backend/README.md) - Backend-specific documentation
 - [Frontend README](./frontend/README.md) - Frontend-specific documentation
-- [API Documentation](./API.md) - Detailed API reference
+- [Documentation](./DOCUMENTATION.md) - Architecture, API, and implementation notes
+- [Deployment Guide](./DEPLOY_RENDER_VERCEL.md) - Render + Vercel deployment
+- [Project Structure](./PROJECT_STRUCTURE.md) - Directory layout
 
 ## Contributing
 
@@ -377,5 +393,5 @@ For issues, questions, or suggestions:
 
 ---
 
-**Last Updated**: September 2026
-**Version**: 2.0.0
+**Last Updated**: November 2026
+**Version**: 3.0.0

@@ -1,16 +1,52 @@
-# React + Vite
+# IntraDoc AI — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite frontend for [IntraDoc AI](https://github.com/9bishal/Enterprise-Document-Intelligence-System-), a RAG-powered document intelligence platform.
 
-Currently, two official plugins are available:
+## Live App
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+https://intradoc-frontend.vercel.app
 
-## React Compiler
+The backend API is deployed at:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+https://intradoc-backend.onrender.com/api
 
-## Expanding the ESLint configuration
+> Render's free backend may take 30–60 seconds to wake after inactivity.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Features
+
+- JWT login, registration, and password reset
+- Document upload, batch upload, preview, and department filtering
+- Streaming chat with citations and RAG pipeline visualization
+- Chat session CRUD
+- Admin user management, LLM configuration, and system metrics
+- Responsive light interface
+
+## Local Development
+
+```bash
+npm install
+npm run dev
+```
+
+The app runs at `http://localhost:5173` by default.
+
+Create `frontend/.env.local` if you need a custom API URL:
+
+```env
+VITE_API_BASE=http://localhost:8000/api
+```
+
+## Production Build
+
+```bash
+npm run build
+npm run preview
+```
+
+Vercel uses `VITE_API_BASE=https://intradoc-backend.onrender.com/api`.
+
+## Related Docs
+
+- [Root README](../README.md)
+- [Deployment guide](../DEPLOY_RENDER_VERCEL.md)
+- [Backend README](../backend/README.md)

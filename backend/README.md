@@ -1,6 +1,15 @@
-# Backend - Document Intelligent System
+# IntraDoc AI — Backend
 
-Django REST Framework backend for the Document Intelligent System with RAG (Retrieval-Augmented Generation) pipeline, vector search, and LLM integration.
+Django REST Framework backend for IntraDoc AI, with a RAG pipeline, department-scoped vector search, JWT auth, and LLM integration.
+
+## Live API
+
+- API base: https://intradoc-backend.onrender.com/api
+- Health: https://intradoc-backend.onrender.com/api/health/live
+- Readiness: https://intradoc-backend.onrender.com/api/health/ready
+
+Production uses **Neon Postgres** for user/document metadata and **Redis Stack** for caching. Render's free tier has no persistent disk, so uploaded files and Chroma vectors are ephemeral unless external storage is added.
+
 
 ## 📁 Backend Structure
 

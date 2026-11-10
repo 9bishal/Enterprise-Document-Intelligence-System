@@ -1,5 +1,16 @@
 # Deploy IntraDoc AI on Render + Vercel
 
+## Current Live Deployment
+
+| Service | URL |
+|---|---|
+| Frontend | https://intradoc-frontend.vercel.app |
+| Backend API | https://intradoc-backend.onrender.com/api |
+| Health | https://intradoc-backend.onrender.com/api/health/live |
+| Repository | https://github.com/9bishal/Enterprise-Document-Intelligence-System- |
+
+Production uses **Neon Postgres** for durable metadata and **Redis Stack** for caching. Free Render still has ephemeral uploads and Chroma storage.
+
 > **Tracking note:** the previous `.gitignore` block that hid deployment files
 > has been removed. `render.yaml`, `frontend/vercel.json`, `.github/`, and
 > `backend/render_start.sh` now need to be committed and pushed before Render,

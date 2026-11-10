@@ -1,13 +1,25 @@
-# Quick Start Guide
+# IntraDoc AI — Quick Start
 
-Get the Document Intelligent System up and running in minutes!
+Get IntraDoc AI running locally or use the hosted deployment.
+
+## Live Deployment
+
+- **Frontend:** https://intradoc-frontend.vercel.app
+- **Backend API:** https://intradoc-backend.onrender.com/api
+- **Health:** https://intradoc-backend.onrender.com/api/health/live
+
+The Render free backend may take 30–60 seconds to wake after inactivity.
+
+## Local Setup
+
+Get IntraDoc AI running locally in minutes!
 
 ## 5-Minute Setup
 
 ### 1. Clone & Navigate
 
 ```bash
-git clone https://github.com/yourusername/document_intelligent_system.git
+git clone https://github.com/9bishal/Enterprise-Document-Intelligence-System-.git
 cd document_intelligent_system
 ```
 
