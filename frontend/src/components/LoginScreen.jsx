@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './LoginScreen.css';
 import { API_BASE, safeLocalStorage } from '../utils/constants';
 import { SparklesIcon } from './Icons';
+import PasswordInput from './PasswordInput';
 const storage = safeLocalStorage();
 
 export default function LoginScreen({ onAuthSuccess }) {
@@ -38,7 +39,7 @@ export default function LoginScreen({ onAuthSuccess }) {
         } else {
           setError(data.detail || 'Failed to send OTP.');
         }
-      } catch (err) {
+      } catch {
         setError('Network connection error.');
       } finally {
         setLoading(false);
@@ -66,7 +67,7 @@ export default function LoginScreen({ onAuthSuccess }) {
         } else {
           setError(data.detail || 'Failed to reset password.');
         }
-      } catch (err) {
+      } catch {
         setError('Network connection error.');
       } finally {
         setLoading(false);
@@ -112,7 +113,7 @@ export default function LoginScreen({ onAuthSuccess }) {
       } else {
         setError(data.detail || 'Authentication failed.');
       }
-    } catch (err) {
+    } catch {
       setError('Network connection error. Ensure the Django server is running.');
     } finally {
       setLoading(false);
@@ -169,9 +170,8 @@ export default function LoginScreen({ onAuthSuccess }) {
                 </div>
                 <div className="settings-field" style={{ marginTop: '16px' }}>
                   <label htmlFor="new-password">New Password</label>
-                  <input
+                  <PasswordInput
                     id="new-password"
-                    type="password"
                     className="login-input"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -213,9 +213,8 @@ export default function LoginScreen({ onAuthSuccess }) {
 
             <div className="settings-field" style={{ marginTop: '16px' }}>
               <label htmlFor="password">Password</label>
-              <input
+              <PasswordInput
                 id="password"
-                type="password"
                 className="login-input"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

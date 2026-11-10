@@ -292,6 +292,7 @@ def query_rag_stream(request):
         documents = []
         model_used = ""
         in_tok, out_tok, cost = 0, 0, 0.0
+        first_token_ms = None
         try:
             for evt in run_rag_stream(
                 question, api_keys, model_config,
@@ -300,6 +301,8 @@ def query_rag_stream(request):
             ):
                 etype = evt.get("type")
                 if etype == "token" and evt.get("delta"):
+                    if first_token_ms is None:
+                        first_token_ms = int((time.time() - start) * 1000)
                     full_answer += evt["delta"]
                     yield _sse("token", {"delta": evt["delta"]})
                 elif etype == "citations":
@@ -329,7 +332,8 @@ def query_rag_stream(request):
                         print(f"[stream] persist failed: {e}")
                     yield _sse("done", {
                         "id": assistant_msg_id, "model_used": model_used,
-                        "latency_ms": latency_ms, "sources": documents,
+                        "latency_ms": latency_ms, "ttft_ms": first_token_ms,
+                        "sources": documents,
                         "steps": ["retrieve", "generate"], "success": True,
                         "cache_hit": cache_hit,
                         "input_tokens": in_tok, "output_tokens": out_tok,

@@ -17,7 +17,7 @@ from app.vector_store import delete_document_from_index
 from .doc_indexing import process_document_indexing
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
+UPLOADS_DIR = os.getenv("INTRADOC_UPLOADS_DIR", os.path.join(BASE_DIR, "uploads"))
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 _REDIS_URL = os.getenv("INTRADOC_REDIS_URL", "redis://localhost:6379/0")
@@ -111,9 +111,9 @@ def _dedupe_by_content(filepath, filename, department, new_doc_id):
     # 2. Near-duplicate: same info with edits (e.g. renamed v2). Compare
     # extracted text; threshold tunable via INTRADOC_DUP_SIM_THRESHOLD.
     try:
-        threshold = float(os.getenv("INTRADOC_DUP_SIM_THRESHOLD", "0.85"))
+        threshold = float(os.getenv("INTRADOC_DUP_SIM_THRESHOLD", "1"))
     except ValueError:
-        threshold = 0.85
+        threshold = 1
     try:
         from app.vector_store import extract_text_from_file, get_department_collection
         pages = extract_text_from_file(filepath) or []
@@ -207,6 +207,31 @@ def _resolve_department(user_role, user_department, request):
             return requested_dept
     return user_department
 
+
+ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".txt", ".md", ".docx"}
+MAX_UPLOAD_BYTES = int(os.getenv("INTRADOC_MAX_UPLOAD_MB", "25")) * 1024 * 1024
+MAX_BATCH_BYTES = int(os.getenv("INTRADOC_MAX_BATCH_MB", "100")) * 1024 * 1024
+
+
+def _validate_upload(file):
+    """Return (safe_filename, error). Only supported document types are allowed."""
+    filename = os.path.basename(file.name or "upload")
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+        return filename, (
+            f"Unsupported file type '{ext or 'unknown'}'. "
+            f"Allowed: {', '.join(sorted(ALLOWED_UPLOAD_EXTENSIONS))}."
+        )
+    size = getattr(file, "size", 0) or 0
+    if size <= 0:
+        return filename, "Empty files are not accepted."
+    if size > MAX_UPLOAD_BYTES:
+        return filename, (
+            f"File exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MB upload limit."
+        )
+    return filename, None
+
+
 @api_view(['POST'])
 @permission_classes([IsEditorOrAbove])
 def upload_document(request):
@@ -214,8 +239,11 @@ def upload_document(request):
         return Response({"detail": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
 
     file = request.FILES['file']
+    filename, upload_error = _validate_upload(file)
+    if upload_error:
+        return Response({"detail": upload_error}, status=status.HTTP_400_BAD_REQUEST)
+
     doc_id = str(uuid.uuid4())
-    filename = file.name
     user_department, user_role = _get_user_context(request)
     user_department = _resolve_department(user_role, user_department, request)
 
@@ -273,11 +301,21 @@ def upload_documents_batch(request):
     if len(files) > 1000:
         return Response({"detail": "Batch size limited to 1000 files per request."}, status=status.HTTP_400_BAD_REQUEST)
 
+    total_size = sum(getattr(file, "size", 0) or 0 for file in files)
+    if total_size > MAX_BATCH_BYTES:
+        return Response(
+            {"detail": f"Batch exceeds the {MAX_BATCH_BYTES // (1024 * 1024)} MB total upload limit."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     results = []
     errors = []
     for file in files:
         doc_id = str(uuid.uuid4())
-        filename = file.name
+        filename, upload_error = _validate_upload(file)
+        if upload_error:
+            errors.append({"filename": filename, "error": upload_error})
+            continue
         try:
             filepath = _save_uploaded_file(file, doc_id, filename)
             file_size = os.path.getsize(filepath)

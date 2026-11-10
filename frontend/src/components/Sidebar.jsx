@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { 
-  SparklesIcon, FileIcon, UploadIcon, TrashIcon, SettingsIcon, FolderIcon, ShieldIcon, AlertTriangleIcon
+  SparklesIcon, FileIcon, UploadIcon, TrashIcon, FolderIcon, ShieldIcon, AlertTriangleIcon
 } from './Icons';
+import PasswordInput from './PasswordInput';
 import { PROVIDER_MODELS } from '../utils/constants';
 
 export default function Sidebar({
@@ -317,13 +318,12 @@ export default function Sidebar({
                 <label>
                   {modelConfig.provider.toUpperCase()} API Key
                 </label>
-                <input 
-                  type="password"
+                <PasswordInput
                   className="settings-input"
                   placeholder={`Enter your ${modelConfig.provider} API key`}
                   value={apiKeys[modelConfig.provider] || ''}
                   onChange={(e) => onApiKeyChange(modelConfig.provider, e.target.value)}
-                  style={{ border: modelConfig.provider === 'groq' && !apiKeys.groq ? '1px solid rgba(192, 132, 252, 0.4)' : '1px solid var(--panel-border)' }}
+                  inputStyle={{ border: modelConfig.provider === 'groq' && !apiKeys.groq ? '1px solid rgba(192, 132, 252, 0.4)' : '1px solid var(--panel-border)' }}
                 />
                 {modelConfig.provider === 'groq' && !apiKeys.groq && (
                   <span style={{ fontSize: '10px', color: 'var(--accent)', marginTop: 2, fontWeight: 500 }}>

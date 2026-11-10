@@ -43,9 +43,41 @@ def health_ready(request):
 @require_GET
 def cache_stats(request):
     try:
+        from ..cache.config import CacheType
         from ..cache.manager import CacheManager
+        from ..cache.metrics import CACHE_HITS, CACHE_MISSES, CACHE_SET_TOTAL
+
         cm = CacheManager()
         stats = cm.stats()
+
+        per_cache = {}
+        total_hits = 0
+        total_misses = 0
+        total_sets = 0
+        for cache_type in CacheType:
+            label = cache_type.value
+            hits = int(CACHE_HITS.labels(label)._value.get())
+            misses = int(CACHE_MISSES.labels(label)._value.get())
+            sets = int(CACHE_SET_TOTAL.labels(label)._value.get())
+            lookups = hits + misses
+            per_cache[label] = {
+                "hits": hits,
+                "misses": misses,
+                "sets": sets,
+                "hit_rate": round(hits / lookups, 4) if lookups else 0.0,
+            }
+            total_hits += hits
+            total_misses += misses
+            total_sets += sets
+
+        lookups = total_hits + total_misses
+        stats["per_cache"] = per_cache
+        stats["totals"] = {
+            "hits": total_hits,
+            "misses": total_misses,
+            "sets": total_sets,
+            "hit_rate": round(total_hits / lookups, 4) if lookups else 0.0,
+        }
         return JsonResponse(stats)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)

@@ -33,6 +33,26 @@ def admin_metrics(request):
     cache_hits = assistant_msgs.filter(cache_hit=True).count()
     avg_latency_agg = assistant_msgs.aggregate(avg=models.Avg('latency_ms'))['avg'] or 0
     error_responses = assistant_msgs.filter(models.Q(model_used="error") | models.Q(content__icontains="an error occurred")).count()
+
+    latency_values = sorted(
+        v for v in assistant_msgs.exclude(latency_ms=0).values_list('latency_ms', flat=True)
+        if v is not None
+    )
+
+    def _percentile(values, fraction):
+        if not values:
+            return 0
+        position = (len(values) - 1) * fraction
+        lower = int(position)
+        upper = min(lower + 1, len(values) - 1)
+        if lower == upper:
+            return values[lower]
+        return values[lower] + (values[upper] - values[lower]) * (position - lower)
+
+    p50_latency = round(_percentile(latency_values, 0.50))
+    p95_latency = round(_percentile(latency_values, 0.95))
+    p99_latency = round(_percentile(latency_values, 0.99))
+    cache_hit_rate = round(cache_hits / total_responses, 4) if total_responses else 0.0
     
     # User lists with role and department
     users_list = []
@@ -117,8 +137,12 @@ def admin_metrics(request):
             "total_tokens": total_input_tokens + total_output_tokens,
             "total_cost": round(float(total_cost), 6),
             "cache_hits": cache_hits,
+            "cache_hit_rate": cache_hit_rate,
             "total_responses": total_responses,
             "avg_latency": round(float(avg_latency_agg)),
+            "p50_latency": p50_latency,
+            "p95_latency": p95_latency,
+            "p99_latency": p99_latency,
             "error_responses": error_responses,
         },
         "users": users_list,

@@ -54,8 +54,9 @@ app.add_middleware(
 )
 
 # Uploads directory
-UPLOADS_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads"
+UPLOADS_DIR = os.getenv(
+    "INTRADOC_UPLOADS_DIR",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads"),
 )
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 

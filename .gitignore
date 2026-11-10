@@ -120,6 +120,13 @@ frontend/.env
 
 # Docker
 docker-compose.override.yml
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+
+# Vercel local state
+.vercel/
+frontend/.vercel/
 
 # Misc
 .cache

@@ -1,6 +1,6 @@
-import React from 'react';
 import styles from './AdminStyles';
 import { SettingsIcon } from '../Icons';
+import PasswordInput from '../PasswordInput';
 import { PROVIDER_MODELS } from '../../utils/constants';
 
 export default function AdminSystemConfig({ 
@@ -84,11 +84,10 @@ export default function AdminSystemConfig({
             {llmConfig.config.provider === 'groq' && (
               <div>
                 <label style={styles.label}>Groq API Key</label>
-                <input 
-                  type="password" 
+                <PasswordInput
                   value={llmConfig.api_keys.groq || ''}
                   onChange={e => setLlmConfig({...llmConfig, api_keys: {...llmConfig.api_keys, groq: e.target.value}})}
-                  style={styles.input}
+                  inputStyle={styles.input}
                   placeholder="gsk_..."
                 />
               </div>
@@ -97,11 +96,10 @@ export default function AdminSystemConfig({
             {llmConfig.config.provider === 'gemini' && (
               <div>
                 <label style={styles.label}>Gemini API Key</label>
-                <input 
-                  type="password" 
+                <PasswordInput
                   value={llmConfig.api_keys.gemini || ''}
                   onChange={e => setLlmConfig({...llmConfig, api_keys: {...llmConfig.api_keys, gemini: e.target.value}})}
-                  style={styles.input}
+                  inputStyle={styles.input}
                   placeholder="AIza..."
                 />
               </div>
@@ -110,11 +108,10 @@ export default function AdminSystemConfig({
             {llmConfig.config.provider === 'openai' && (
               <div>
                 <label style={styles.label}>OpenAI API Key</label>
-                <input 
-                  type="password" 
+                <PasswordInput
                   value={llmConfig.api_keys.openai || ''}
                   onChange={e => setLlmConfig({...llmConfig, api_keys: {...llmConfig.api_keys, openai: e.target.value}})}
-                  style={styles.input}
+                  inputStyle={styles.input}
                   placeholder="sk-..."
                 />
               </div>

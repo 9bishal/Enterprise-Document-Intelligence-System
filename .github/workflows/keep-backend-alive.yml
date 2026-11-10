@@ -1,0 +1,38 @@
+name: Keep Backend Alive
+
+on:
+  schedule:
+    # Every 10 minutes. Render free services sleep after ~15 minutes.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keep-backend-alive
+  cancel-in-progress: false
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run Render watchdog
+        env:
+          BACKEND_HEALTH_URL: ${{ secrets.BACKEND_HEALTH_URL }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+          HEALTH_RETRIES: "3"
+          HEALTH_RETRY_DELAY: "20"
+          HEALTH_TIMEOUT: "120"
+          RECOVERY_CHECKS: "6"
+          RECOVERY_DELAY: "30"
+        run: python scripts/render_watchdog.py

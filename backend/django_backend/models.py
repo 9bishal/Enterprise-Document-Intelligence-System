@@ -71,24 +71,33 @@ def _mask_key(key):
         return ""
     return key[:4] + "*" * (len(key) - 8) + key[-4:]
 
+def _encryption_key() -> bytes:
+    """Derive a stable Fernet key from the dedicated encryption secret.
+
+    Falls back to SECRET_KEY for backwards compatibility with existing rows.
+    """
+    from django.conf import settings
+    import base64
+    import hashlib
+
+    secret = getattr(settings, "INTRADOC_ENCRYPTION_KEY", None) or settings.SECRET_KEY
+    return base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest())
+
+
 def _encrypt_value(plaintext):
     if not plaintext:
         return ""
-    from django.conf import settings
     from cryptography.fernet import Fernet
-    import base64, hashlib
-    key = base64.urlsafe_b64encode(hashlib.sha256(settings.SECRET_KEY.encode()).digest())
-    f = Fernet(key)
+
+    f = Fernet(_encryption_key())
     return f.encrypt(plaintext.encode()).decode()
 
 def _decrypt_value(ciphertext):
     if not ciphertext:
         return ""
-    from django.conf import settings
     from cryptography.fernet import Fernet
-    import base64, hashlib
-    key = base64.urlsafe_b64encode(hashlib.sha256(settings.SECRET_KEY.encode()).digest())
-    f = Fernet(key)
+
+    f = Fernet(_encryption_key())
     try:
         return f.decrypt(ciphertext.encode()).decode()
     except Exception:

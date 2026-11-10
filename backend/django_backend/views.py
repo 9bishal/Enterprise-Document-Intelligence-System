@@ -29,7 +29,10 @@ from django_backend.serializers import (
 from app.vector_store import index_document, delete_document_from_index
 from app.rag_graph import run_rag_pipeline
 
-UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
+UPLOADS_DIR = os.getenv(
+    "INTRADOC_UPLOADS_DIR",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads"),
+)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 # Helper function to classify and scan document risks

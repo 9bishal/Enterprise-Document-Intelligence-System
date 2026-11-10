@@ -1,4 +1,12 @@
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
+const configuredApiBase = import.meta.env.VITE_API_BASE;
+
+if (import.meta.env.PROD && !configuredApiBase) {
+  console.error(
+    'VITE_API_BASE is not set. Set it to the deployed backend URL in Vercel, e.g. https://your-backend.onrender.com/api'
+  );
+}
+
+export const API_BASE = configuredApiBase || 'http://localhost:8000/api';
 
 export const PROVIDER_MODELS = {
   groq: [
@@ -40,11 +48,11 @@ export function safeLocalStorage() {
     },
     setItem(key, value) {
       store[key] = value;
-      try { localStorage.setItem(key, value); } catch {}
+      try { localStorage.setItem(key, value); } catch { /* ignore */ }
     },
     removeItem(key) {
       delete store[key];
-      try { localStorage.removeItem(key); } catch {}
+      try { localStorage.removeItem(key); } catch { /* ignore */ }
     }
   };
 }

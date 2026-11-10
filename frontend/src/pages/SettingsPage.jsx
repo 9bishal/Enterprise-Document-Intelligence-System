@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SettingsIcon, ShieldIcon, LockIcon, BarChartIcon, ZapIcon, CopyIcon, CheckIcon } from '../components/Icons';
+import PasswordInput from '../components/PasswordInput';
 import { PROVIDER_MODELS } from '../utils/constants';
 
 export default function SettingsPage({
-  API_BASE,
   apiKeys,
   handleApiKeyChange,
   modelConfig,
@@ -95,8 +95,8 @@ export default function SettingsPage({
               <div className="input-group">
                 <label>API Key</label>
                 <div className="input-with-action">
-                  <input
-                    type="password"
+                  <PasswordInput
+                    wrapperStyle={{ flex: 1 }}
                     placeholder="gsk_..."
                     value={apiKeys.groq || ''}
                     onChange={(e) => handleApiKeyChange('groq', e.target.value)}
@@ -128,8 +128,8 @@ export default function SettingsPage({
               <div className="input-group">
                 <label>API Key</label>
                 <div className="input-with-action">
-                  <input
-                    type="password"
+                  <PasswordInput
+                    wrapperStyle={{ flex: 1 }}
                     placeholder="AIza..."
                     value={apiKeys.gemini || ''}
                     onChange={(e) => handleApiKeyChange('gemini', e.target.value)}
@@ -161,8 +161,8 @@ export default function SettingsPage({
               <div className="input-group">
                 <label>API Key</label>
                 <div className="input-with-action">
-                  <input
-                    type="password"
+                  <PasswordInput
+                    wrapperStyle={{ flex: 1 }}
                     placeholder="sk-..."
                     value={apiKeys.openai || ''}
                     onChange={(e) => handleApiKeyChange('openai', e.target.value)}

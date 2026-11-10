@@ -1,6 +1,8 @@
-import random
-from django.conf import settings
+import logging
+import secrets
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.utils import timezone
 from datetime import timedelta
 
@@ -10,6 +12,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
 # Custom imports
+from django_backend.emails import send_invitation_email
 from django_backend.models import UserProfile, UserInvitation
 from django_backend.permissions import IsAdminUser
 
@@ -26,6 +29,11 @@ def admin_invite(request):
     if not email:
         return Response({"detail": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
 
+    try:
+        validate_email(email)
+    except ValidationError:
+        return Response({"detail": "Enter a valid email address."}, status=status.HTTP_400_BAD_REQUEST)
+
     # Validate role and department
     valid_roles = ['Viewer', 'Editor', 'Admin']
     valid_departments = ['HR', 'Legal', 'Finance', 'Technical', 'General']
@@ -40,7 +48,7 @@ def admin_invite(request):
         return Response({"detail": "A user with this email already exists."}, status=status.HTTP_400_BAD_REQUEST)
 
     # Generate 6-digit OTP
-    otp = str(random.randint(100000, 999999))
+    otp = "".join(secrets.choice("0123456789") for _ in range(6))
     expires_at = timezone.now() + timedelta(minutes=15)
 
     # Create or update invitation (re-invite invalidates previous OTP)
@@ -55,36 +63,15 @@ def admin_invite(request):
         }
     )
 
-    # Send email via Django SMTP
     try:
-        from django.core.mail import send_mail
-        subject = "Intradoc AI — Your Corporate Workspace Invitation"
-        message = (
-            f"Hello,\n\n"
-            f"You have been invited to join Intradoc AI as a {role} in the {department} department.\n\n"
-            f"Your one-time registration code is:\n\n"
-            f"    {otp}\n\n"
-            f"This code expires in 15 minutes.\n\n"
-            f"To complete your registration:\n"
-            f"1. Go to http://localhost:5173\n"
-            f"2. Click 'Register now'\n"
-            f"3. Enter your username, password, this email, and the code above\n\n"
-            f"— Intradoc AI Administration"
-        )
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            [email],
-            fail_silently=False,
-        )
+        send_invitation_email(email, otp, role, department)
         return Response({
             "detail": f"Invitation sent successfully to {email}.",
             "role": role,
             "department": department
         })
     except Exception as e:
-        print(f"SMTP email send error for {email}: {str(e)}")
+        logging.getLogger(__name__).error("Email delivery failed for invitation %s: %s", email, e)
         return Response({
             "detail": f"Invitation created but email delivery failed. Contact the new employee manually with their OTP.",
             "role": role,

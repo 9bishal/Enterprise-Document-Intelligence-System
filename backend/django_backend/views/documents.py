@@ -15,7 +15,7 @@ from django_backend.serializers import DocumentSerializer
 from app.vector_store import index_document, delete_document_from_index
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
+UPLOADS_DIR = os.getenv("INTRADOC_UPLOADS_DIR", os.path.join(BASE_DIR, "uploads"))
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 # Helper function to classify and scan document risks

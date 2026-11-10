@@ -15,10 +15,10 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from django.conf import settings
 from django.contrib import admin
 from django.urls import path
 from django.http import HttpResponse, HttpResponseRedirect
-from django.views.decorators.csrf import csrf_exempt
 
 # Import views
 from django_backend import views
@@ -98,13 +98,13 @@ def home_view(request):
         <div class="container">
             <div class="logo">✦</div>
             <h1>Intradoc AI Backend Service</h1>
-            <p>The Django REST API backend is actively running on port 8000. Please open the main user interface served by the frontend dev server.</p>
-            <a href="http://localhost:5173" class="btn">Go to Workspace Client</a>
+            <p>The Django REST API backend is running. Open the workspace client to start using the application.</p>
+            <a href="{frontend_url}" class="btn">Go to Workspace Client</a>
         </div>
     </body>
     </html>
     """
-    return HttpResponse(html)
+    return HttpResponse(html.replace("{frontend_url}", settings.FRONTEND_URL))
 
 from rest_framework_simplejwt.views import TokenRefreshView
 

@@ -1,0 +1,147 @@
+# Render Blueprint for the IntraDoc AI backend.
+#
+# Deploy:
+#   1. Push this file to the repository's default branch.
+#   2. Render Dashboard -> New -> Blueprint -> select this repository.
+#   3. Fill in the `sync: false` secrets when prompted.
+#
+# IMPORTANT LIMITATIONS OF THE FREE PLAN
+#   - Free web services sleep after ~15 minutes without traffic. The GitHub
+#     Actions watchdog in .github/workflows/keep-backend-alive.yml pings the
+#     health endpoint every 10 minutes to keep it awake.
+#   - Free services have no persistent disk. SQLite (backend/data/app.db),
+#     Chroma (backend/data/chroma), and uploaded files (backend/uploads) are
+#     lost on every deploy or restart.
+#   - The free Render Key Value instance does NOT include RediSearch. The
+#     semantic cache initialization can fail as a result, which disables the
+#     cache/cost/metrics integration. The application still serves queries, but
+#     without caching. Use an external Redis Stack instance for full behaviour.
+#   - 512 MB RAM may be insufficient for SentenceTransformer + CrossEncoder +
+#     Chroma. If the service is OOM-killed, upgrade to a paid plan and attach a
+#     persistent disk (see the commented example at the end).
+
+services:
+  - type: web
+    name: intradoc-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    region: oregon
+    # Install CPU-only torch first so Render does not pull the much larger
+    # CUDA build through sentence-transformers.
+    buildCommand: pip install --upgrade pip && pip install --index-url https://download.pytorch.org/whl/cpu torch && pip install -r requirements.txt
+    startCommand: bash ./render_start.sh
+    healthCheckPath: /api/health/live
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.12"
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: INTRADOC_ENCRYPTION_KEY
+        sync: false
+        # Stable key for encrypting provider API keys in the DB. Set once and
+        # keep it; changing it makes previously saved keys unreadable.
+      - key: FRONTEND_URL
+        sync: false
+        # e.g. https://your-app.vercel.app (used in invite/reset emails).
+      - key: DATABASE_URL
+        sync: false
+        # Optional managed Postgres URL. Leave blank to keep SQLite (ephemeral
+        # on the free plan).
+      - key: ALLOW_FIRST_USER_BOOTSTRAP
+        sync: false
+        # Set True only for the very first deploy, then switch to False after
+        # the initial Admin account exists.
+      - key: INTRADOC_MAX_UPLOAD_MB
+        value: "25"
+      - key: INTRADOC_MAX_BATCH_MB
+        value: "100"
+      - key: INTRADOC_EMBED_DEVICE
+        value: cpu
+      - key: GUNICORN_WORKERS
+        value: "1"
+      - key: GUNICORN_THREADS
+        value: "4"
+      - key: GUNICORN_TIMEOUT
+        value: "120"
+      - key: GUNICORN_MAX_REQUESTS
+        value: "1000"
+      - key: GUNICORN_MAX_REQUESTS_JITTER
+        value: "100"
+      # Optional: set this to your custom API domain. If omitted, settings.py
+      # automatically allows RENDER_EXTERNAL_HOSTNAME.
+      - key: ALLOWED_HOSTS
+        sync: false
+      # Set this to your Vercel production URL and optionally the wildcard for
+      # preview deployments, e.g.:
+      # https://your-app.vercel.app,https://*.vercel.app
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: LLM_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      # Required for admin invitations and password-reset OTPs.
+      # Render's free tier blocks outbound SMTP, so use Brevo's HTTPS API.
+      # Create a free Brevo account, verify a sender, then paste the API key.
+      - key: EMAIL_BACKEND
+        value: anymail.backends.brevo.EmailBackend
+      - key: BREVO_API_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: SECURE_SSL_REDIRECT
+        value: "False"
+      - key: SECURE_HSTS_SECONDS
+        value: "31536000"
+      - key: JWT_ACCESS_TOKEN_LIFETIME_MINUTES
+        value: "60"
+      - key: JWT_REFRESH_TOKEN_LIFETIME_DAYS
+        value: "7"
+      - key: INTRADOC_FAST_PATH
+        value: "1"
+      - key: INTRADOC_SHORT_ANSWERS
+        value: "1"
+      - key: INTRADOC_MAX_TOKENS
+        value: "512"
+      # Basic Redis-compatible cache. Semantic cache requires Redis Stack
+      # (RediSearch); replace this with an external Redis Stack URL if needed.
+      - key: INTRADOC_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: intradoc-cache
+          property: connectionString
+
+  - type: keyvalue
+    name: intradoc-cache
+    plan: free
+    region: oregon
+    ipAllowList: []  # internal connections only
+
+# ---------------------------------------------------------------------------
+# Paid-plan option: persistent storage.
+#
+# Upgrade the web service plan (for example to 1c-2g) and add:
+#
+#    disk:
+#      name: intradoc-data
+#      mountPath: /opt/render/project/src/backend/data
+#      sizeGB: 5
+#
+# Then set backend uploads inside the disk by adding to the web service env:
+#
+#    - key: INTRADOC_UPLOADS_DIR
+#      value: /opt/render/project/src/backend/data/uploads
+#
+# This keeps SQLite, Chroma, and uploads on the same persistent disk. See
+# DEPLOY_RENDER_VERCEL.md for the complete paid-plan guidance.
+# ---------------------------------------------------------------------------

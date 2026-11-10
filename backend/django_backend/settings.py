@@ -30,6 +30,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Load .env file
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
+# Public URL of the frontend. Used in invitation/reset emails and on the
+# backend landing page. Override per environment.
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+
+# Optional dedicated key for encrypting provider API keys stored in the DB.
+# Falls back to SECRET_KEY for backwards compatibility. Set this once and keep
+# it stable: changing it makes previously stored API keys undecryptable.
+INTRADOC_ENCRYPTION_KEY = os.getenv("INTRADOC_ENCRYPTION_KEY", "").strip() or None
+
+# Bootstrap guard: the first public signup becomes Admin. Defaults to enabled
+# only in DEBUG; production must opt in explicitly for the first deploy and
+# then switch it off.
+_debug_enabled = os.getenv("DEBUG", "True").lower() in ["true", "1", "yes"]
+ALLOW_FIRST_USER_BOOTSTRAP = os.getenv(
+    "ALLOW_FIRST_USER_BOOTSTRAP", "True" if _debug_enabled else "False"
+).lower() in ["true", "1", "yes"]
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
@@ -39,7 +56,32 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-rqvlm3y5___o*g*g3c=@vpao1e
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "True").lower() in ["true", "1", "yes"]
 
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "*").split(",")] if os.getenv("ALLOWED_HOSTS") else ["*"]
+if not DEBUG and SECRET_KEY.startswith("django-insecure-"):
+    raise RuntimeError(
+        "SECRET_KEY must be set to a strong, unique value when DEBUG is disabled."
+    )
+
+_configured_hosts = [
+    h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()
+]
+if _configured_hosts:
+    ALLOWED_HOSTS = _configured_hosts
+else:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
+    _render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
+    if _render_host:
+        ALLOWED_HOSTS.append(_render_host)
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+_render_host_for_csrf = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
+if _render_host_for_csrf:
+    _render_origin = f"https://{_render_host_for_csrf}"
+    if _render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_render_origin)
 
 
 # Application definition
@@ -53,6 +95,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    "anymail",
     "django_backend",
 ]
 
@@ -92,12 +135,27 @@ WSGI_APPLICATION = "django_backend.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+DATA_DIR = BASE_DIR / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "data" / "app.db",
+        "NAME": DATA_DIR / "app.db",
     }
 }
+
+# Optional managed Postgres (Render/Neon/Supabase/RDS). When unset, the app
+# falls back to the local SQLite file above.
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+if DATABASE_URL:
+    import dj_database_url
+
+    DATABASES["default"] = dj_database_url.parse(
+        DATABASE_URL,
+        conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "600")),
+        conn_health_checks=True,
+    )
 
 
 # Password validation
@@ -151,13 +209,24 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Request/upload limits. File size is enforced per upload in the document
+# views; these settings bound the overall multipart request.
+INTRADOC_MAX_UPLOAD_MB = int(os.getenv("INTRADOC_MAX_UPLOAD_MB", "25"))
+DATA_UPLOAD_MAX_MEMORY_SIZE = INTRADOC_MAX_UPLOAD_MB * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = INTRADOC_MAX_UPLOAD_MB * 1024 * 1024
+DATA_UPLOAD_MAX_NUMBER_FILES = int(os.getenv("DATA_UPLOAD_MAX_NUMBER_FILES", "1000"))
+DATA_UPLOAD_MAX_NUMBER_FIELDS = int(os.getenv("DATA_UPLOAD_MAX_NUMBER_FIELDS", "2000"))
+
 # Redis Configuration (used by caching layer)
 REDIS_URL = os.getenv("INTRADOC_REDIS_URL", "redis://localhost:6379/0")
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'auth': os.getenv('AUTH_THROTTLE_RATE', '10/min'),
+    },
 }
 
 from datetime import timedelta
@@ -194,11 +263,54 @@ LOGGING = {
     "root": {"handlers": ["console"], "level": logging.DEBUG if DEBUG else logging.INFO},
 }
 
-# Email (SMTP) Configuration
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+# Email Configuration
+# Local development can use SMTP. Render's free tier blocks outbound SMTP
+# ports (25/465/587), so production should use an HTTPS email API such as
+# Brevo or Resend through django-anymail.
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ["true", "1", "yes"]
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "") or EMAIL_HOST_USER or "no-reply@localhost"
+
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
+
+_configured_email_backend = os.getenv("EMAIL_BACKEND", "").strip()
+if _configured_email_backend:
+    EMAIL_BACKEND = _configured_email_backend
+elif BREVO_API_KEY:
+    EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
+elif RESEND_API_KEY:
+    EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+ANYMAIL = {}
+if BREVO_API_KEY:
+    ANYMAIL["BREVO_API_KEY"] = BREVO_API_KEY
+if RESEND_API_KEY:
+    ANYMAIL["RESEND_API_KEY"] = RESEND_API_KEY
+
+# Production security settings. Render terminates TLS at its proxy, so the
+# forwarded-proto header is trusted when DEBUG is disabled.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    USE_X_FORWARDED_HOST = True
+    # Keep this off by default so platform health checks are not redirected.
+    # Set SECURE_SSL_REDIRECT=True if your platform does not already force HTTPS.
+    SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "False").lower() in [
+        "true",
+        "1",
+        "yes",
+    ]
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+    X_FRAME_OPTIONS = "DENY"
