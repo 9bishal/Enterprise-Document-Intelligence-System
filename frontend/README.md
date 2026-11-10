@@ -1,6 +1,6 @@
 # IntraDoc AI — Frontend
 
-React + Vite frontend for [IntraDoc AI](https://github.com/9bishal/Enterprise-Document-Intelligence-System-), a RAG-powered document intelligence platform.
+React + Vite frontend for [IntraDoc AI](https://github.com/9bishal/Enterprise-Document-Intelligence-System), a RAG-powered document intelligence platform.
 
 ## Live App
 

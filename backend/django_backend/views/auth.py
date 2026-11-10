@@ -184,7 +184,7 @@ def auth_forgot_password(request):
     except Exception as e:
         import logging
         logging.getLogger(__name__).error("Email delivery failed for password reset %s: %s", email, e)
-        return Response({"detail": "Failed to send OTP email. Please contact administrator."}, status=500)
+        return Response({"message": generic_message})
     
     return Response({"message": generic_message})
 

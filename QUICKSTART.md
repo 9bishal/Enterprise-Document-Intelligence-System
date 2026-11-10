@@ -19,7 +19,7 @@ Get IntraDoc AI running locally in minutes!
 ### 1. Clone & Navigate
 
 ```bash
-git clone https://github.com/9bishal/Enterprise-Document-Intelligence-System-.git
+git clone https://github.com/9bishal/Enterprise-Document-Intelligence-System.git
 cd document_intelligent_system
 ```
 

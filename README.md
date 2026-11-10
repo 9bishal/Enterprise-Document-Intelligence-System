@@ -11,7 +11,7 @@ IntraDoc AI is a full-stack document intelligence platform built around **RAG (R
 | Frontend | https://intradoc-frontend.vercel.app |
 | Backend API | https://intradoc-backend.onrender.com/api |
 | Health check | https://intradoc-backend.onrender.com/api/health/live |
-| Repository | https://github.com/9bishal/Enterprise-Document-Intelligence-System- |
+| Repository | https://github.com/9bishal/Enterprise-Document-Intelligence-System |
 
 > The backend runs on Render's free tier and may take 30–60 seconds to wake after inactivity.
 

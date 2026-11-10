@@ -5,7 +5,7 @@
 - Frontend: https://intradoc-frontend.vercel.app
 - Backend API: https://intradoc-backend.onrender.com/api
 - Health: https://intradoc-backend.onrender.com/api/health/live
-- Repository: https://github.com/9bishal/Enterprise-Document-Intelligence-System-
+- Repository: https://github.com/9bishal/Enterprise-Document-Intelligence-System
 
 
 ## High-Level Architecture

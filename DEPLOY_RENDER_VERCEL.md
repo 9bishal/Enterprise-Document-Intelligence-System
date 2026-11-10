@@ -7,7 +7,7 @@
 | Frontend | https://intradoc-frontend.vercel.app |
 | Backend API | https://intradoc-backend.onrender.com/api |
 | Health | https://intradoc-backend.onrender.com/api/health/live |
-| Repository | https://github.com/9bishal/Enterprise-Document-Intelligence-System- |
+| Repository | https://github.com/9bishal/Enterprise-Document-Intelligence-System |
 
 Production uses **Neon Postgres** for durable metadata and **Redis Stack** for caching. Free Render still has ephemeral uploads and Chroma storage.
 
