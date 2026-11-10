@@ -129,53 +129,32 @@ def extract_text_from_file(filepath):
     pages_text = []  # list of dicts: {"text": str, "page": int, "is_table": bool}
 
     if ext == ".pdf":
-        # Try pdfplumber for table-aware extraction, fallback to pypdf
+        # pypdf is substantially lighter than pdfplumber and avoids OOM on
+        # 512 MB hosts. Table-aware pdfplumber extraction is opt-in because
+        # it loads additional page/table structures into memory.
         try:
-            import pdfplumber
-            with pdfplumber.open(filepath) as pdf:
-                for i, page in enumerate(pdf.pages):
-                    # 1. Extract tables first as markdown (structure preserved)
-                    try:
-                        tables = page.extract_tables() or []
-                    except Exception:
-                        tables = []
-                    for table in tables:
-                        md = _table_to_markdown(table)
-                        if md:
-                            pages_text.append({"text": md, "page": i + 1, "is_table": True})
-                    # 2. Extract remaining text (pdfplumber text preserves layout better than pypdf)
-                    try:
-                        text = page.extract_text() or ""
-                    except Exception:
-                        text = ""
-                    # Avoid duplicating table text already captured - pdfplumber text includes table cells,
-                    # but we keep it as plain text fallback for non-tabular content
-                    if text and text.strip():
-                        # Deduplicate: if text is just table cells, skip if we already have tables
-                        pages_text.append({"text": text.strip(), "page": i + 1, "is_table": False})
-            # Fallback if pdfplumber yielded nothing (e.g. scanned PDF)
-            if not pages_text:
-                raise ValueError("pdfplumber yielded no text")
-        except ImportError:
-            # pdfplumber not installed - fallback to pypdf
             reader = PdfReader(filepath)
             for i, page in enumerate(reader.pages):
                 text = page.extract_text()
                 if text and text.strip():
-                    pages_text.append({"text": text, "page": i + 1, "is_table": False})
-        except Exception as e:
-            # If pdfplumber failed, fallback to pypdf
-            if not pages_text:
-                try:
-                    reader = PdfReader(filepath)
-                    for i, page in enumerate(reader.pages):
-                        text = page.extract_text()
-                        if text and text.strip():
-                            pages_text.append({"text": text, "page": i + 1, "is_table": False})
-                except Exception:
-                    # Re-raise original if both fail
-                    if not pages_text:
-                        raise e
+                    pages_text.append({"text": text.strip(), "page": i + 1, "is_table": False})
+        except Exception:
+            pages_text = []
+
+        if os.getenv("INTRADOC_PDF_TABLES", "0").lower() in ("1", "true", "yes"):
+            try:
+                import pdfplumber
+                with pdfplumber.open(filepath) as pdf:
+                    for i, page in enumerate(pdf.pages):
+                        for table in (page.extract_tables() or []):
+                            md = _table_to_markdown(table)
+                            if md:
+                                pages_text.append({"text": md, "page": i + 1, "is_table": True})
+                        text = page.extract_text() or ""
+                        if text.strip():
+                            pages_text.append({"text": text.strip(), "page": i + 1, "is_table": False})
+            except Exception as e:
+                print(f"pdfplumber table extraction skipped for {filepath}: {e}")
     elif ext == ".docx":
         # Try python-docx for table-aware extraction, fallback to docx2txt
         try:
