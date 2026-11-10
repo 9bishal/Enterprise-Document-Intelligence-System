@@ -23,6 +23,8 @@ import time
 import urllib.error
 import urllib.request
 
+DEFAULT_HEADERS = {"User-Agent": "IntraDoc-Watchdog/1.0"}
+
 
 def env_int(name: str, default: int) -> int:
     try:
@@ -46,7 +48,7 @@ def request(url: str, method: str = "GET", headers=None, body=None, timeout: int
         url,
         data=body,
         method=method,
-        headers=headers or {},
+        headers={**DEFAULT_HEADERS, **(headers or {})},
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as response:
