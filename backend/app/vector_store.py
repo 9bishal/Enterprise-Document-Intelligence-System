@@ -60,16 +60,22 @@ class LocalSentenceTransformerEmbeddings:
         """Encode single query - uses embedding cache if available."""
         _init_vector_cache()
         if _cache_enabled:
-            ec = _vector_cache["embedding"]
-            cached = ec.get_embedding(text, EMBEDDING_MODEL_NAME)
-            if cached is not None:
-                return cached
+            try:
+                ec = _vector_cache["embedding"]
+                cached = ec.get_embedding(text, EMBEDDING_MODEL_NAME)
+                if cached is not None:
+                    return cached
+            except Exception:
+                pass
         with _EMBED_LOCK:
             embedding = self.model.encode(text, show_progress_bar=False)
         result = list(map(float, embedding))
         if _cache_enabled:
-            ec = _vector_cache["embedding"]
-            ec.set_embedding(text, EMBEDDING_MODEL_NAME, result)
+            try:
+                ec = _vector_cache["embedding"]
+                ec.set_embedding(text, EMBEDDING_MODEL_NAME, result)
+            except Exception:
+                pass
         return result
 
 
