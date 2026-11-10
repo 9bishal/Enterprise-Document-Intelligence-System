@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 
 RERANKER_MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
@@ -30,6 +31,8 @@ def _rerank_cache_key(query: str, candidates: list[dict]) -> str:
 def rerank(query: str, candidates: list[dict], top_k: int = 4) -> list[dict]:
     if not candidates:
         return []
+    if os.getenv("INTRADOC_RERANK", "1").lower() in ("0", "false", "no"):
+        return candidates[:top_k]
     _init_rerank_cache()
     if _rerank_cache_enabled:
         key = _rerank_cache_key(query, candidates)
