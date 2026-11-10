@@ -199,13 +199,14 @@ def extract_text_from_file(filepath):
     return pages_text
 
 
-def index_document(doc_id, filename, filepath, department='General'):
+def index_document(doc_id, filename, filepath, department='General', pages_data=None):
     """Index document chunks into the department-specific ChromaDB collection.
     Table blocks are kept intact (not split) so column headers stay with values: | Price | 100 |
     """
     from app.semantic_chunk import semantic_chunk
 
-    pages_data = extract_text_from_file(filepath)
+    if pages_data is None:
+        pages_data = extract_text_from_file(filepath)
     if not pages_data:
         raise ValueError("No text could be extracted from the file.")
 

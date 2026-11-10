@@ -2,7 +2,7 @@ import os
 import hashlib
 import threading
 from django_backend.models import Document
-from app.vector_store import index_document
+from app.vector_store import extract_text_from_file, index_document
 
 try:
     from django_backend.cache.domain_caches import DocumentFingerprintCache
@@ -20,10 +20,10 @@ def _compute_file_hash(filepath: str) -> str:
     return h.hexdigest()
 
 # Helper function to classify and scan document risks
-def analyze_document_classification_and_risks(filepath):
+def analyze_document_classification_and_risks(filepath, pages_data=None):
     try:
-        from app.vector_store import extract_text_from_file
-        pages_data = extract_text_from_file(filepath)
+        if pages_data is None:
+            pages_data = extract_text_from_file(filepath)
         if not pages_data:
             return "General", "Clean", "No text found to analyze."
         
@@ -95,28 +95,48 @@ def process_document_indexing(doc_id, filename, filepath, department='General'):
             except Exception as cache_error:
                 print(f"Fingerprint cache unavailable for '{filename}'; continuing without it: {cache_error}")
 
+        # Extract once and share between indexing and classification. Re-extracting
+        # the same PDF in parallel doubled memory use and caused OOM restarts.
+        pages_data = extract_text_from_file(filepath)
+        if not pages_data:
+            raise ValueError("No text could be extracted from the file.")
+
         # 1. Run AI classification and risk screening IN PARALLEL with indexing.
-        #    Classification is network-bound (LLM call), indexing is compute-bound
-        #    (embedding), so overlapping them makes total time ~max() not the sum.
         classify_result = {}
         def _classify():
             try:
-                classify_result["value"] = analyze_document_classification_and_risks(filepath)
+                classify_result["value"] = analyze_document_classification_and_risks(filepath, pages_data=pages_data)
             except Exception as e:
                 classify_result["value"] = ("General", "Clean", f"Analysis error: {str(e)}")
         classify_thread = threading.Thread(target=_classify, daemon=True)
         classify_thread.start()
 
         # 2. Ingest document text chunks into department-scoped vector store
-        chunk_count = index_document(doc_id, filename, filepath, department=department)
+        chunk_count = index_document(doc_id, filename, filepath, department=department, pages_data=pages_data)
 
-        # 3. Wait for classification to finish (already overlapped with embedding)
-        classify_thread.join(timeout=90)
+        # 3. Mark the document available as soon as vector indexing is done. The
+        # classification call is optional and must not hold the UI in "ingesting".
+        doc = Document.objects.get(id=doc_id)
+        if doc.status == "superseded":
+            print(f"Document '{filename}' was superseded by a newer version during indexing; leaving it retired.")
+            try:
+                from app.vector_store import delete_document_from_index
+                delete_document_from_index(doc_id, department=department)
+            except Exception:
+                pass
+            return
+        doc.status = "indexed"
+        doc.chunk_count = chunk_count
+        doc.save(update_fields=["status", "chunk_count"])
+
+        # 4. Wait briefly for classification, then update metadata. A slow LLM
+        # never blocks the document from becoming searchable.
+        classify_thread.join(timeout=int(os.getenv("INTRADOC_CLASSIFY_TIMEOUT", "20")))
         classification, risk_status, risk_details = classify_result.get(
             "value", ("General", "Clean", "")
         )
 
-        # 4. Map department to classification if needed
+        # 5. Map department to classification if needed
         dept_to_classification = {
             'HR': 'Human Resources',
             'Legal': 'Legal',
@@ -134,19 +154,11 @@ def process_document_indexing(doc_id, filename, filepath, department='General'):
         #    retired instead of resurrecting it as indexed).
         doc = Document.objects.get(id=doc_id)
         if doc.status == "superseded":
-            print(f"Document '{filename}' was superseded by a newer version during indexing; leaving it retired.")
-            try:
-                from app.vector_store import delete_document_from_index
-                delete_document_from_index(doc_id, department=department)
-            except Exception:
-                pass
             return
-        doc.status = "indexed"
-        doc.chunk_count = chunk_count
         doc.classification = mapped_classification
         doc.risk_status = risk_status
         doc.risk_details = risk_details
-        doc.save()
+        doc.save(update_fields=["classification", "risk_status", "risk_details"])
 
         if _cache_enabled:
             DOCUMENTS_INDEXED.labels(department, "indexed").inc()
