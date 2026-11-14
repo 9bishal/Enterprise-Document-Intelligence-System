@@ -8,7 +8,7 @@ IntraDoc AI is a full-stack document intelligence platform built around **RAG (R
 
 | Service | Link |
 |---|---|
-| Frontend | https**://intradoc-frontend.vercel.app |
+| Frontend | https://intradoc-frontend.vercel.app |
 | Backend API | https://intradoc-backend.onrender.com/api |
 | Health check | https://intradoc-backend.onrender.com/api/health/live |
 | Repository | https://github.com/9bishal/Enterprise-Document-Intelligence-System |
