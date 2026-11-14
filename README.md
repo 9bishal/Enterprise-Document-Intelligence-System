@@ -2,13 +2,13 @@
 
 IntraDoc AI is a full-stack document intelligence platform built around **RAG (Retrieval-Augmented Generation)**. It lets teams upload internal documents, search them semantically, and ask natural-language questions with grounded citations.
 
-**Stack:** Django REST Framework · React 19 + Vite · LangGraph RAG · Chroma · Redis Stack · PostgreSQL (Neon) · Groq / Gemini / OpenAI
+**Stack:**Django REST Framework · React 19 + Vite · LangGraph RAG · Chroma · Redis Stack · PostgreSQL (Neon) · Groq / Gemini / OpenAI
 
 ## Live Deployment
 
 | Service | Link |
 |---|---|
-| Frontend | https://intradoc-frontend.vercel.app |
+| Frontend | https**://intradoc-frontend.vercel.app |
 | Backend API | https://intradoc-backend.onrender.com/api |
 | Health check | https://intradoc-backend.onrender.com/api/health/live |
 | Repository | https://github.com/9bishal/Enterprise-Document-Intelligence-System |
@@ -101,16 +101,16 @@ document_intelligent_system/
 ## Features
 
 ### Core Features
-- ** Document Management**: Upload (single or batch up to 1000 files), index, preview, and organize documents by department
-- ** Semantic Search**: Hybrid RAG (dense vectors + BM25 + RRF fusion + cross-encoder rerank) with true cosine similarity scores
-- ** Chat Interface**: Real-time token streaming (SSE) with paced visible stream-out, message history, and deep-linkable threads (`/query/:sessionId`)
-- ** Fast Single-Call Pipeline**: 1 LLM call per query (no grading loops); semantic + prompt + embedding caches (Redis + RediSearch)
-- ** Deterministic Guards**: Greeting short-circuit, weak-grounding refusal (no LLM, no citations), cited-only source display, weak-grounding amber flag
-- ** RAG Pipeline Visualization**: Live stage tracing (retrieve → grade → generate) with real tokens, billed cost, latency, and cache status per answer
-- ** Answer Export**: Copy / download (.txt / .md) question + answer, native Share support
-- ** Document Versioning**: Same-name re-upload supersedes v1 (chunks deleted, caches invalidated); byte-identical uploads skipped as duplicates; near-duplicate (≥85%) content supersedes by similarity
-- ** Department Filtering**: Query documents from specific departments
-- ** Role-Based Access Control**: Admin, Editor, Viewer roles with granular permissions
+- **Document Management**: Upload (single or batch up to 1000 files), index, preview, and organize documents by department
+- **Semantic Search**: Hybrid RAG (dense vectors + BM25 + RRF fusion + cross-encoder rerank) with true cosine similarity scores
+- **Chat Interface**: Real-time token streaming (SSE) with paced visible stream-out, message history, and deep-linkable threads (`/query/:sessionId`)
+- **Fast Single-Call Pipeline**: 1 LLM call per query (no grading loops); semantic + prompt + embedding caches (Redis + RediSearch)
+- **Deterministic Guards**: Greeting short-circuit, weak-grounding refusal (no LLM, no citations), cited-only source display, weak-grounding amber flag
+- **RAG Pipeline Visualization**: Live stage tracing (retrieve → grade → generate) with real tokens, billed cost, latency, and cache status per answer
+- **Answer Export**: Copy / download (.txt / .md) question + answer, native Share support
+- **Document Versioning**: Same-name re-upload supersedes v1 (chunks deleted, caches invalidated); byte-identical uploads skipped as duplicates; near-duplicate (≥85%) content supersedes by similarity
+- **Department Filtering**: Query documents from specific departments
+- **Role-Based Access Control**: Admin, Editor, Viewer roles with granular permissions
 
 ### Chat Session Management (CRUD)
 - **Create** new chat threads
@@ -126,7 +126,7 @@ document_intelligent_system/
 - **Department-based Classification** + LLM risk screening for documents
 - **Parallel ingestion** (2-worker pool, `INTRADOC_INDEX_WORKERS`) with batch upload endpoint
 - **SSL/TLS Support** for secure LLM API calls
-- **Pagination & Filtering** for document queries
+- **Pagination & Filtering**for document queries
 
 ### Admin Features
 - Document deletion with vector store cleanup, in-app preview
@@ -158,7 +158,7 @@ Everything below is what the project actually uses (from `backend/requirements.t
 | LangGraph | 1.2.9 | RAG pipeline orchestration (retrieve → generate) |
 | langchain-text-splitters | 1.1.3 | Document chunking |
 | Chroma | 1.5.9 | Vector database (department-scoped collections) |
-| sentence-transformers | 3.3.1 | Embeddings: `all-MiniLM-L6-v2` |
+| sentence-transformers | 3.3.1 | Embeddings**: `all-MiniLM-L6-v2` |
 | transformers (Hugging Face) | 4.46.3 | Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2` |
 | rank-bm25 | 0.2.2 | Lexical (BM25) retrieval, fused with dense via RRF |
 | redisvl | 0.23.0 | Redis semantic cache (`SemanticCache`) + embedding cache |
@@ -327,7 +327,7 @@ Everything below is what the project actually uses (from `backend/requirements.t
 
 ## Authentication
 
-The system uses **JWT (JSON Web Token)** authentication:
+The system uses **JWT (JSON Web Token)**authentication**:
 
 1. User logs in with credentials
 2. Server returns `access_token` and `refresh_token`
@@ -427,7 +427,7 @@ The backend uses Neon Postgres for durable user/document metadata and Redis Stac
 
 **Keep-alive:** GitHub Actions pings the health endpoint every 10 minutes (`keep-backend-alive.yml` → `scripts/render_watchdog.py`) and auto-restarts the service via the Render API if the health check fails.
 
-**Releases:** see [Releases](https://github.com/9bishal/Enterprise-Document-Intelligence-System/releases) (latest: v1.0.0).
+**Releases:**see [Releases](https**://github.com/9bishal/Enterprise-Document-Intelligence-System/releases) (latest: v1.0.0).
 
 ## Troubleshooting
 
