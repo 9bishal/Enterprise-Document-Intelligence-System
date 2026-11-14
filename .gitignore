@@ -3,6 +3,10 @@
 .env.local
 .env.*.local
 
+# Load tests
+loadtests/.venv/
+loadtests/tokens.json
+
 # Python
 __pycache__/
 *.py[cod]
