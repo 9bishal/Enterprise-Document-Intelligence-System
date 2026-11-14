@@ -2,7 +2,7 @@
 
 IntraDoc AI is a full-stack document intelligence platform built around **RAG (Retrieval-Augmented Generation)**. It lets teams upload internal documents, search them semantically, and ask natural-language questions with grounded citations.
 
-**Stack:** Django REST Framework · React + Vite · PostgreSQL (Neon) · Redis Stack · Chroma · Groq / Gemini / OpenAI
+**Stack:** Django REST Framework · React 19 + Vite · LangGraph RAG · Chroma · Redis Stack · PostgreSQL (Neon) · Groq / Gemini / OpenAI
 
 ## Live Deployment
 
@@ -56,10 +56,10 @@ document_intelligent_system/
 │   ├── data/                  # Vector database & SQLite storage
 │   ├── manage.py              # Django management script
 │   ├── run.py                 # Application entry point
-│   ├── requirements.txt       # Python dependencies
+│   ├── requirements.txt       # Python dependencies (pinned)
 │   └── .env                   # Environment variables (not in repo)
 │
-├── frontend/                   # React + Vite application
+├── frontend/                   # React 19 + Vite application
 │   ├── src/
 │   │   ├── pages/            # Page components
 │   │   │   ├── QueryPage.jsx      # Chat interface with RAG pipeline
@@ -80,7 +80,22 @@ document_intelligent_system/
 │   ├── vite.config.js        # Vite configuration
 │   └── README.md             # Frontend README
 │
-└── .venv/                     # Python virtual environment
+├── loadtests/                  # Locust load tests (65-70 concurrent users)
+│   ├── locustfile.py         # Load test definition (user behavior, task weights)
+│   ├── create_test_users.py  # Test user + JWT minting script
+│   ├── README.md             # Results, percentile guide, how to run
+│   └── results_*.csv         # Raw results of past runs
+│
+├── scripts/
+│   └── render_watchdog.py    # Health monitor + auto-restart via Render API
+│
+├── .github/workflows/
+│   ├── ci.yml                # Backend compile/check + frontend build
+│   └── keep-backend-alive.yml # Cron: pings health every 10 min (anti-sleep)
+│
+├── docker-compose.yml         # Local stack: Redis Stack + backend + frontend
+├── render.yaml                # Render service blueprint
+└── start_redis.sh             # Local Redis Stack launcher (RediSearch module)
 ```
 
 ## Features
@@ -100,7 +115,6 @@ document_intelligent_system/
 ### Chat Session Management (CRUD)
 - **Create** new chat threads
 - **Read** chat history with full conversation context
-- **Update** (rename) chat sessions via 3-dot menu
 - **Delete** chat sessions with confirmation
 
 ### Backend Features
@@ -122,30 +136,87 @@ document_intelligent_system/
 
 ## Tech Stack
 
-### Backend
-- **Framework**: Django 6 + Django REST Framework
-- **Database**: PostgreSQL (Neon) in production; SQLite for local development
-- **Vector DB**: Chroma (department-scoped collections)
-- **Cache / Semantic cache**: Redis Stack (RediSearch)
-- **LLM**: Groq / Gemini / OpenAI (admin-configured, bill-accurate usage)
-- **Authentication**: JWT tokens
-- **Language**: Python 3.12
-- **Hosting**: Render
+Everything below is what the project actually uses (from `backend/requirements.txt`, `frontend/package.json`, and the infra files).
+
+### Backend — Web & API
+| Technology | Version | Purpose |
+|---|---|---|
+| Django | 6.0.7 | Web framework, ORM, admin |
+| Django REST Framework | 3.17.1 | REST API, serializers, permissions, throttling |
+| djangorestframework-simplejwt | 5.5.1 | JWT auth (access/refresh, token blacklist) |
+| django-cors-headers | 4.9.0 | CORS for the Vite frontend |
+| django-anymail | 15.2 | Transactional email (invites, password reset) |
+| Gunicorn | 26.2.0 | Production WSGI server (Render) |
+| Whitenoise | 6.12.0 | Static file serving |
+| dj-database-url + psycopg (3) | 3.1.2 / 3.3.8 | Managed Postgres (Neon) connection |
+| SQLite | — | Local development database (zero-config) |
+| FastAPI + Uvicorn | 0.136.3 / 0.51.0 | Standalone RAG API entry (`app/main.py`) |
+
+### RAG / AI / Retrieval
+| Technology | Version | Purpose |
+|---|---|---|
+| LangGraph | 1.2.9 | RAG pipeline orchestration (retrieve → generate) |
+| langchain-text-splitters | 1.1.3 | Document chunking |
+| Chroma | 1.5.9 | Vector database (department-scoped collections) |
+| sentence-transformers | 3.3.1 | Embeddings: `all-MiniLM-L6-v2` |
+| transformers (Hugging Face) | 4.46.3 | Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2` |
+| rank-bm25 | 0.2.2 | Lexical (BM25) retrieval, fused with dense via RRF |
+| redisvl | 0.23.0 | Redis semantic cache (`SemanticCache`) + embedding cache |
+| groq SDK | 0.37.1 | Primary LLM provider (admin-configured) |
+| google-generativeai | 0.8.6 | Gemini provider |
+| openai SDK | 2.46.0 | OpenAI provider |
+
+### Document Processing
+| Technology | Version | Purpose |
+|---|---|---|
+| pypdf | 6.14.2 | PDF text extraction |
+| pdfplumber | 0.11.10 | Complex/table PDF extraction |
+| python-docx + docx2txt | 1.2.0 / 0.9 | Word document extraction |
+| python-multipart | 0.0.32 | File upload parsing |
+
+### Caching & Infrastructure
+| Technology | Version | Purpose |
+|---|---|---|
+| Redis Stack (redis-stack-server) | 7.4 | Cache + RediSearch module (required for semantic cache) |
+| redis-py | 7.4.1 | Redis client |
+| prometheus-client | 0.25.0 | `/metrics` endpoint, app metrics |
+| Pydantic | 2.13.4 | Request/response validation |
+| python-dotenv | 1.0.1 | Env var loading |
+| requests | 2.34.2 | Outbound HTTP |
+| cryptography | 49.0.0 | Provider API key encryption at rest |
 
 ### Frontend
-- **Framework**: React
-- **Build Tool**: Vite
-- **Styling**: CSS
-- **State Management**: React Hooks
-- **HTTP Client**: Fetch API
-- **Language**: JavaScript (ES6+)
-- **Hosting**: Vercel
+| Technology | Version | Purpose |
+|---|---|---|
+| React | 19.2 | UI framework |
+| react-router-dom | 7.x | Routing (deep-linkable chat threads) |
+| Vite | 8.x | Build tool & dev server |
+| ESLint (+ react-hooks, react-refresh plugins) | 10.x | Linting |
+| Fetch API | — | HTTP client (native) |
+| CSS | — | Styling |
+
+### DevOps & CI/CD
+| Tool | Purpose |
+|---|---|
+| Docker Compose | Local stack: Redis Stack + backend + frontend |
+| Render | Backend hosting (blueprint: `render.yaml`) |
+| Vercel | Frontend hosting |
+| Neon | Managed Postgres in production |
+| GitHub Actions — `ci.yml` | Backend compile check + Django system check + frontend build |
+| GitHub Actions — `keep-backend-alive.yml` | Cron every 10 min: health ping + auto-restart watchdog (`scripts/render_watchdog.py`) |
+| GitHub Releases | Versioned releases (latest: v1.0.0) |
+
+### Testing & Load Testing
+| Tool | Purpose |
+|---|---|
+| Locust | Load testing — **65 concurrent users: 6,339 requests, 0 failures, p95 220ms** (see [`loadtests/`](./loadtests/README.md)) |
 
 ## Prerequisites
 
-- Python 3.10+ (backend)
-- Node.js 16+ (frontend)
-- npm or yarn (frontend)
+- Python 3.12+ (backend)
+- Node.js 20+ (frontend)
+- npm (frontend)
+- Redis Stack with the RediSearch module (`./start_redis.sh` handles this locally)
 - Git (for version control)
 
 ## Installation & Setup
@@ -168,15 +239,11 @@ document_intelligent_system/
    pip install -r requirements.txt
    ```
 
-4. **Set up environment variables** (create `.env` file):
-   ```env
-   DEBUG=True
-   SECRET_KEY=your-secret-key-here
-   DATABASE_URL=sqlite:///db.sqlite3
-   OPENAI_API_KEY=your-openai-key
-   CHROMA_HOST=localhost
-   CHROMA_PORT=8000
-   ```
+4. **Set up environment variables** (copy the template and fill in your keys):
+    ```bash
+    cp .env.example .env
+    ```
+    Key variables: `SECRET_KEY`, `LLM_PROVIDER=groq`, `GROQ_API_KEY` (or `GEMINI_API_KEY` / `OPENAI_API_KEY`), and optionally `DATABASE_URL` for managed Postgres. Full reference with comments is in [`.env.example`](./backend/.env.example).
 
 5. **Run migrations**:
    ```bash
@@ -215,14 +282,17 @@ document_intelligent_system/
 ## API Endpoints
 
 ### Authentication
+- `POST /api/auth/signup` - User signup (requires admin invite code)
 - `POST /api/auth/login` - User login
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/refresh` - Refresh JWT token
+- `POST /api/auth/logout` - Logout (blacklists refresh token)
+- `GET /api/auth/me` - Current user profile
+- `POST /api/auth/forgot-password` - Request password reset email
+- `POST /api/auth/reset-password` - Reset password with emailed code
+- `POST /api/auth/token/refresh` - Refresh JWT access token
 
 ### Chat Sessions (CRUD)
 - `GET /api/chat/sessions` - List all chat sessions
 - `POST /api/chat/sessions` - Create new chat session
-- `PUT /api/chat/sessions/{id}` - Update/rename session
 - `DELETE /api/chat/sessions/{id}` - Delete session
 - `GET /api/chat/sessions/{id}/messages` - Get session messages
 
@@ -239,8 +309,21 @@ document_intelligent_system/
 
 ### Admin
 - `GET /api/admin/metrics` - System metrics (real tokens, cost, cache hits, latency, errors, indexed docs)
-- `DELETE /api/admin/documents/{id}` - Admin document deletion
+- `POST /api/admin/invite` - Create user invite (emailed signup link)
+- `GET /api/admin/users` - List users
+- `PATCH /api/admin/users/{id}` - Update user role/department
 - `DELETE /api/admin/users/{id}` - Delete user with confirmation (self-delete and last-admin protected)
+- `GET /api/admin/knowledge-graph` - Knowledge graph data
+- `DELETE /api/admin/documents/{id}/delete` - Admin document deletion
+- `GET /api/admin/llm-config` / `POST /api/admin/llm-config/update` - View/update LLM provider config
+
+### System
+- `GET /api/health/live` - Liveness probe (used by the keep-alive watchdog)
+- `GET /api/health/ready` - Readiness probe (DB + cache)
+- `GET /api/cache/stats` - Cache statistics
+- `GET /api/departments` - Department list
+- `GET /api/llm-config` - Public LLM config
+- `GET /metrics` - Prometheus metrics
 
 ## Authentication
 
@@ -317,17 +400,20 @@ Each step is traced live in the Execution Pipeline panel with real tokens, cost,
 
 ## Testing
 
-### Backend Tests
+There are no automated unit tests yet (planned: pytest for the backend, Vitest for the frontend). Testing today is **load testing with Locust**:
+
 ```bash
-cd backend
-python manage.py test
+# One-time: install Locust + create test users / mint JWTs (see loadtests/README.md)
+python3 -m venv loadtests/.venv && loadtests/.venv/bin/pip install locust
+
+# Run: 65 concurrent users, ramp 2/s, 5 minutes
+loadtests/.venv/bin/locust -f loadtests/locustfile.py \
+  --headless -u 65 -r 2 --run-time 5m --host http://localhost:8000 --csv loadtests/results
 ```
 
-### Frontend Tests
-```bash
-cd frontend
-npm test
-```
+Latest verified result (65 users, 5 min): **6,339 requests, 0 failures, p50 13ms, p95 220ms**. Full methodology, percentile breakdown, and caveats: [loadtests/README.md](./loadtests/README.md).
+
+CI (`.github/workflows/ci.yml`) additionally runs a backend compile check + Django system check and a frontend production build on every push/PR.
 
 ## Deployment
 
@@ -338,6 +424,10 @@ Production is deployed on **Render** (backend) and **Vercel** (frontend):
 - Step-by-step guide: [DEPLOY_RENDER_VERCEL.md](./DEPLOY_RENDER_VERCEL.md)
 
 The backend uses Neon Postgres for durable user/document metadata and Redis Stack for caching. Render's free tier does not provide persistent disk, so uploaded files and Chroma vectors are ephemeral unless a persistent disk or external object/vector storage is added.
+
+**Keep-alive:** GitHub Actions pings the health endpoint every 10 minutes (`keep-backend-alive.yml` → `scripts/render_watchdog.py`) and auto-restarts the service via the Render API if the health check fails.
+
+**Releases:** see [Releases](https://github.com/9bishal/Enterprise-Document-Intelligence-System/releases) (latest: v1.0.0).
 
 ## Troubleshooting
 
@@ -394,4 +484,4 @@ For issues, questions, or suggestions:
 ---
 
 **Last Updated**: November 2026
-**Version**: 3.0.0
+**Release**: [v1.0.0](https://github.com/9bishal/Enterprise-Document-Intelligence-System/releases/tag/v1.0.0)
